@@ -350,9 +350,9 @@ def print_model(rho, data,  show_omitted_variables = False):
         intercept_val = 0
 
     if 'outcome_name' in data:
-        predict_string = "Pr(Y = +1) = 1/(1 + exp(%d - score))" % intercept_val
+        predict_string = "Pr(Y = +1) = 1/(1 + exp(-(%d + score))" % intercept_val
     else:
-        predict_string = "Pr(%s = +1) = 1/(1 + exp(%d - score)" % (data['outcome_name'].upper(), intercept_val)
+        predict_string = "Pr(%s = +1) = 1/(1 + exp(-(%d + score))" % (data['outcome_name'].upper(), intercept_val)
 
     if not show_omitted_variables:
         selected_ind = np.flatnonzero(rho_values)
@@ -423,6 +423,3 @@ def cast_to_integer(rho):
     """
     original_type = rho.dtype
     return np.require(np.require(rho, dtype=np.int_), dtype=original_type)
-
-
-

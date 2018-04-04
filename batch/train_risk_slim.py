@@ -23,10 +23,11 @@ import logging
 import pickle
 import json
 import numpy as np
+from pprint import pprint
 
 # add the source directory to search path to avoid module import errors if riskslim has not been installed
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from riskslim.helper_functions import load_data_from_csv, setup_logging
+from riskslim.helper_functions import load_data_from_csv, setup_logging, print_model
 from riskslim.coefficient_set import CoefficientSet
 from riskslim.setup_functions import get_conservative_offset
 from riskslim.lattice_cpa import run_lattice_cpa, DEFAULT_LCPA_SETTINGS
@@ -224,7 +225,7 @@ if __name__ == '__main__':
 
     #print coefficient set
     if not parsed.silent:
-        coef_set.table()
+        coef_set.view()
 
     constraints = {
         'L0_min': 0,
@@ -244,6 +245,10 @@ if __name__ == '__main__':
         "results_file": parsed.results,
     }
     results.update(model_info)
+    results['coef_set'] = model_info['coef_set'].tabulate()
+
+    pprint(model_info)
+    print_model(model_info['solution'], data)
 
     logger.info("saving results...")
     with open(parsed.results, 'wb') as outfile:

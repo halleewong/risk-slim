@@ -39,11 +39,9 @@ log_dir="${batch_dir}/logs"
 
 #set job parameters
 data_name="df"
-data_file="${data_dir}/${data_name}_data.csv"
-
-cvindices_file="${data_dir}/${data_name}_cvindices.csv"
+data_file="${data_dir}/${data_name}.csv"
+cvindices_file="${data_dir}/folds.csv"
 #weights_file="${data_dir}/${data_name}_weights.csv"
-fold=0
 
 max_coef=5
 max_size=-1
@@ -51,10 +49,14 @@ max_offset=-1
 w_pos=1.00
 c0_value=1e-6
 
-timelimit=60
+timelimit=1800
+
+for fold in {0..10}
+do
+#fold=0
 
 #results_file and log_file must have a UNIQUE name for each job to avoid overwriting existing files
-run_name="${data_name}_fold_${fold}"
+run_name="${data_name}_fold_${fold}_1800s_nomaxsize"
 run_time=$(date +"%m_%d_%Y_%H_%M_%S")
 results_file="${results_dir}/${run_name}_results.p"
 log_file="${log_dir}/${run_name}_${run_time}.log"
@@ -70,7 +72,7 @@ mkdir -p "${log_dir}"
 #addition settings can be modified by changing a JSON file
 #complete list of settings is in: risk-slim/batch/settings_template.json
 settings_file="${results_dir}/${run_name}_settings.json"
-cp "${batch_dir}/settings_template.json" "${settings_file}"
+cp "${batch_dir}/myjob_settings.json" "${settings_file}"
 
 #run command
 python2 "${batch_dir}/train_risk_slim.py"  \
@@ -86,5 +88,7 @@ python2 "${batch_dir}/train_risk_slim.py"  \
     --max_coef "${max_coef}" \
     --max_offset "${max_offset}" \
     --log "${log_file}"
+
+done
 
 exit
