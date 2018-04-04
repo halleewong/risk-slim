@@ -22,7 +22,7 @@
 #           └──logs/           directory where log files are printed out (ignored in git)
 #           └──results/        directory where results files are stored (ignored in git)
 #       └──doc/
-#       └──examples/
+#       └──examples/           
 #       └──riskslim/           directory where code is stored (do not change this to be able to pull from GitHub)
 #       └──setup.py
 #
@@ -32,13 +32,13 @@
 
 #directories
 repo_dir=$(pwd)
-data_dir="${repo_dir}/batch/data"    #change to /batch/data/ for your own data
+data_dir="${repo_dir}/examples/data"    #change to /batch/data/ for your own data
 batch_dir="${repo_dir}/batch"
 results_dir="${batch_dir}/results"
 log_dir="${batch_dir}/logs"
 
 #set job parameters
-data_name="df"
+data_name="breastcancer"
 data_file="${data_dir}/${data_name}_data.csv"
 
 cvindices_file="${data_dir}/${data_name}_cvindices.csv"
@@ -46,7 +46,7 @@ cvindices_file="${data_dir}/${data_name}_cvindices.csv"
 fold=0
 
 max_coef=5
-max_size=-1
+max_size=5
 max_offset=-1
 w_pos=1.00
 c0_value=1e-6
@@ -88,3 +88,4 @@ python2 "${batch_dir}/train_risk_slim.py"  \
     --log "${log_file}"
 
 exit
+W
