@@ -1,8 +1,9 @@
-IPython
-traitlets
+cplex
 numpy
 scipy
 Cython
+IPython
+traitlets
 nose
 pandas
 prettytable
