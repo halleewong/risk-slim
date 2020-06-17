@@ -60,10 +60,10 @@ def print_log(msg, print_flag = True):
 
     """
     if print_flag:
-        if type(msg) is str:
-            print ('%s | ' % (time.strftime("%m/%d/%y @ %I:%M %p", time.localtime()))) + msg
+        if isinstance(msg, str):
+            print('%s | %s' % (time.strftime("%m/%d/%y @ %I:%M %p", time.localtime()), msg))
         else:
-            print '%s | %r' % (time.strftime("%m/%d/%y @ %I:%M %p", time.localtime()), msg)
+            print('%s | %r' % (time.strftime("%m/%d/%y @ %I:%M %p", time.localtime()), msg))
         sys.stdout.flush()
 
 
@@ -123,6 +123,7 @@ def convert_str_to_bool(val):
         return None
 
 
+# Settings
 def get_or_set_default(settings, setting_name, default_value, type_check = False, print_flag=True):
 
     if setting_name not in settings:
@@ -145,6 +146,21 @@ def get_or_set_default(settings, setting_name, default_value, type_check = False
                       (setting_name, default_value), print_flag)
 
             settings[setting_name] = default_value
+
+    return settings
+
+
+def validate_settings(settings = None, default_settings = None):
+
+    if settings is not None:
+        assert isinstance(settings, dict)
+        settings = dict(settings)
+    else:
+        settings = {}
+
+    if default_settings is not None:
+        assert isinstance(default_settings, dict)
+        settings = {k: settings[k] if k in settings else default_settings[k] for k in default_settings}
 
     return settings
 
@@ -350,9 +366,9 @@ def print_model(rho, data,  show_omitted_variables = False):
         intercept_val = 0
 
     if 'outcome_name' in data:
-        predict_string = "Pr(Y = +1) = 1/(1 + exp(-(%d + score))" % intercept_val
+        predict_string = "Pr(Y = +1) = 1.0/(1.0 + exp(-(%d + score))" % intercept_val
     else:
-        predict_string = "Pr(%s = +1) = 1/(1 + exp(-(%d + score))" % (data['outcome_name'].upper(), intercept_val)
+        predict_string = "Pr(%s = +1) = 1.0/(1.0 + exp(-(%d + score))" % (data['outcome_name'].upper(), intercept_val)
 
     if not show_omitted_variables:
         selected_ind = np.flatnonzero(rho_values)

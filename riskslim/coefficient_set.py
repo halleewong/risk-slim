@@ -82,8 +82,8 @@ class CoefficientElement(object):
         if np.isnan(value):
             self._c0 = float('nan')
         else:
-            assert np.isfinite(value), 'L0 penalty for %s must either be NaN or a finite positive number' % (self._name)
-            assert value >= 0.0, 'L0 penalty for %s must either be NaN or a finite positive number' % (self._name)
+            assert np.isfinite(value), 'L0 penalty for %s must either be NaN or a finite positive number' % self._name
+            assert value >= 0.0, 'L0 penalty for %s must either be NaN or a finite positive number' % self._name
             self._c0 = float(value)
 
     @property
@@ -97,11 +97,8 @@ class CoefficientElement(object):
             return 1
         elif self._ub <= 0.0 and self._lb < 0.0:
             return -1
-        elif self._ub == 0.0 and self._lb == 0.0:
-            return 0
         else:
-            return float('nan')
-
+            return 0
 
     @sign.setter
     def sign(self, value):
@@ -243,8 +240,9 @@ class CoefficientSet(object):
         else:
             raise ValueError('no variable named %s in coefficient set' % name)
 
+
     def penalized_indices(self):
-        return np.array(map(lambda v: self._coef_elements[v].penalized, self._variable_names))
+        return np.array(list(map(lambda v: self._coef_elements[v].penalized, self._variable_names)))
 
 
     def tabulate(self):
@@ -281,7 +279,7 @@ class CoefficientSet(object):
         if name == 'C_0j':
             name = 'c0'
 
-        vals = map(lambda v: getattr(self._coef_elements[v], name), self._variable_names)
+        vals = [getattr(self._coef_elements[v], name) for v in self._variable_names]
         if name in ['ub', 'lb', 'c0', 'sign', 'vtype']:
             return np.array(vals)
         else:

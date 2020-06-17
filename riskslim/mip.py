@@ -1,13 +1,8 @@
-# CPLEX
 from math import ceil, floor
-
 import numpy as np
 from cplex import Cplex, SparsePair, infinity as CPX_INFINITY
-from cplex.exceptions import CplexError
-
 from .coefficient_set import CoefficientSet
 from .helper_functions import get_or_set_default, print_log
-
 
 #todo: add loss cut
 #todo: add constraint function
@@ -102,6 +97,7 @@ def create_risk_slim(coef_set, input):
                                             nontrivial_objval_min or \
                                             nontrivial_objval_max
 
+    has_intercept = '(Intercept)' in coef_set.variable_names
     """
     RiskSLIM MIP Formulation
     
@@ -153,8 +149,8 @@ def create_risk_slim(coef_set, input):
     lb = loss_lb + rho_lb + [0.0] * P
     ctype = loss_type + rho_type + 'B' * P
 
-    rho_names = ['rho_' + str(j) for j in range(P)]
-    alpha_names = ['alpha_' + str(j) for j in range(P)]
+    rho_names = ['rho_%d' % j for j in range(P)]
+    alpha_names = ['alpha_%d' % j for j in range(P)]
     varnames = loss_names + rho_names + alpha_names
 
     if include_auxillary_variable_for_objval:
@@ -229,40 +225,37 @@ def create_risk_slim(coef_set, input):
 
     # drop L0_norm_lb constraint for any variable with rho_lb >= 0
     dropped_variables = []
-    # if input['drop_variables']:
-    #
-    #     sign_pos_ind = np.flatnonzero(coef_set.sign > 0)
-    #     sign_neg_ind = np.flatnonzero(coef_set.sign < 0)
-    #     fixed_value_ind = np.flatnonzero(coef_set.ub == coef_set.lb)
-    #
-    #     # drop L0_norm_ub/lb constraint for any variable with rho_ub/rho_lb >= 0
-    #     constraints_to_drop = ["L0_norm_lb_" + str(j) for j in sign_pos_ind] + ["L0_norm_ub_" + str(j) for j in sign_neg_ind]
-    #     cons.delete(constraints_to_drop)
-    #
-    #     # drop alpha for any variable where rho_ub = rho_lb = 0
-    #     variables_to_drop = ["alpha_" + str(j) for j in fixed_value_ind]
-    #     vars.delete(variables_to_drop)
-    #     dropped_variables += variables_to_drop
-    #     alpha_names = [alpha_names[j] for j in range(P) if alpha_names[j] not in dropped_variables]
+    constraints_to_drop = []
 
-    # drop alpha, L0_norm_ub and L0_norm_lb for ('Intercept')
-    try:
-        offset_idx = coef_set.variable_names.index('(Intercept)')
-        offset_alpha_name = 'alpha_' + str(offset_idx)
-        vars.delete([offset_alpha_name])
-        alpha_names.remove(offset_alpha_name)
-        dropped_variables.append(offset_alpha_name)
-        print_from_function("dropped L0 variable for intercept variable")
-    except CplexError:
-        pass
+    # drop alpha / L0_norm_ub / L0_norm_lb for ('Intercept')
+    if input['drop_variables']:
+        # drop L0_norm_ub/lb constraint for any variable with rho_ub/rho_lb >= 0
+        sign_pos_ind = np.flatnonzero(coef_set.sign > 0)
+        sign_neg_ind = np.flatnonzero(coef_set.sign < 0)
+        constraints_to_drop.extend(["L0_norm_lb_" + str(j) for j in sign_pos_ind])
+        constraints_to_drop.extend(["L0_norm_ub_" + str(j) for j in sign_neg_ind])
 
-    try:
-        offset_idx = coef_set.variable_names.index('(Intercept)')
-        cons.delete(["L0_norm_lb_" + str(offset_idx), "L0_norm_ub_" + str(offset_idx)])
-        print_from_function("dropped L0 constraints for intercept variable")
-    except CplexError:
-        pass
+        # drop alpha for any variable where rho_ub = rho_lb = 0
+        fixed_value_ind = np.flatnonzero(coef_set.ub == coef_set.lb)
+        variables_to_drop = ["alpha_" + str(j) for j in fixed_value_ind]
+        vars.delete(variables_to_drop)
+        dropped_variables += variables_to_drop
+        alpha_names = [alpha_names[j] for j in range(P) if alpha_names[j] not in dropped_variables]
 
+    if has_intercept:
+        intercept_idx = coef_set.variable_names.index('(Intercept)')
+        intercept_alpha_name = 'alpha_' + str(intercept_idx)
+        vars.delete([intercept_alpha_name])
+
+        alpha_names.remove(intercept_alpha_name)
+        dropped_variables.append(intercept_alpha_name)
+
+        print_from_function("dropped L0 indicator for '(Intercept)'")
+        constraints_to_drop.extend(["L0_norm_ub_" + str(intercept_idx), "L0_norm_lb_" + str(intercept_idx)])
+
+    if len(constraints_to_drop) > 0:
+        constraints_to_drop = list(set(constraints_to_drop))
+        cons.delete(constraints_to_drop)
 
     # indices
     indices = {
@@ -321,22 +314,17 @@ def set_cplex_mip_parameters(cpx, param, display_cplex_progress = False):
     MIP with parameters
 
     """
-    # todo remove parallel
-    cpx.parameters.randomseed.set(param['randomseed'])
-    cpx.parameters.threads.set(param['n_cores'])
-    cpx.parameters.output.clonelog.set(0)
-    cpx.parameters.parallel.set(1)
+    p = cpx.parameters
+    p.randomseed.set(param['randomseed'])
+    p.threads.set(param['n_cores'])
+    p.output.clonelog.set(0)
+    p.parallel.set(1)
 
     if display_cplex_progress is (None or False):
-        cpx.set_results_stream(None)
-        cpx.set_log_stream(None)
+        cpx = set_cpx_display_options(cpx, display_mip = False, display_lp = False, display_parameters = False)
 
     problem_type = cpx.problem_type[cpx.get_problem_type()]
     if problem_type == 'MIP':
-
-        if display_cplex_progress is (None or False):
-            cpx.parameters.mip.display.set(0)
-
         # CPLEX Memory Parameters
         # MIP.Param.workdir.Cur  = exp_workdir;
         # MIP.Param.workmem.Cur                    = cplex_workingmem;
@@ -344,16 +332,35 @@ def set_cplex_mip_parameters(cpx, param, display_cplex_progress = False):
         # MIP.Param.mip.limits.treememory.Cur      = cplex_nodefilesize;
 
         # CPLEX MIP Parameters
-        cpx.parameters.emphasis.mip.set(param['mipemphasis'])
-        cpx.parameters.mip.tolerances.mipgap.set(param['mipgap'])
-        cpx.parameters.mip.tolerances.absmipgap.set(param['absmipgap'])
-        cpx.parameters.mip.tolerances.integrality.set(param['integrality_tolerance'])
+        p.emphasis.mip.set(param['mipemphasis'])
+        p.mip.tolerances.mipgap.set(param['mipgap'])
+        p.mip.tolerances.absmipgap.set(param['absmipgap'])
+        p.mip.tolerances.integrality.set(param['integrality_tolerance'])
 
         # CPLEX Solution Pool Parameters
-        cpx.parameters.mip.limits.repairtries.set(param['repairtries'])
-        cpx.parameters.mip.pool.capacity.set(param['poolsize'])
-        cpx.parameters.mip.pool.replace.set(param['poolreplace'])
+        p.mip.limits.repairtries.set(param['repairtries'])
+        p.mip.pool.capacity.set(param['poolsize'])
+        p.mip.pool.replace.set(param['poolreplace'])
         # 0 = replace oldest /1: replace worst objective / #2 = replace least diverse solutions
+
+    return cpx
+
+
+def set_cpx_display_options(cpx, display_mip = True, display_parameters = False, display_lp = False):
+
+    cpx.parameters.mip.display.set(display_mip)
+    cpx.parameters.simplex.display.set(display_lp)
+
+    try:
+        cpx.parameters.paramdisplay.set(display_parameters)
+    except AttributeError:
+        pass
+
+    if not (display_mip or display_lp):
+        cpx.set_results_stream(None)
+        cpx.set_log_stream(None)
+        cpx.set_error_stream(None)
+        cpx.set_warning_stream(None)
 
     return cpx
 
@@ -383,12 +390,12 @@ def add_mip_starts(mip, indices, pool, max_mip_starts = float('inf'), mip_start_
 
     pool = pool.distinct().sort()
 
-    #todo iterate over solution pool
     n_added = 0
     for objval, rho in zip(pool.objvals, pool.solutions):
-        if pool.objvals[0] <= (obj_cutoff + np.finfo('float').eps):
+        if np.less_equal(objval, obj_cutoff):
             mip_start_name = "mip_start_" + str(n_added)
             mip_start_obj, _ = convert_to_risk_slim_cplex_solution(rho = rho, indices = indices, objval = objval)
+            mip_start_obj = cast_mip_start(mip_start_obj, mip)
             mip.MIP_starts.add(mip_start_obj, mip_start_effort_level, mip_start_name)
             n_added += 1
 
@@ -396,6 +403,35 @@ def add_mip_starts(mip, indices, pool, max_mip_starts = float('inf'), mip_start_
             break
 
     return mip
+
+
+def cast_mip_start(mip_start, cpx):
+    """
+    casts the solution values and indices in a Cplex SparsePair
+
+    Parameters
+    ----------
+    mip_start cplex SparsePair
+    cpx Cplex
+
+    Returns
+    -------
+    Cplex SparsePair where the indices are integers and the values for each variable match the variable type specified in CPLEX Object
+    """
+
+    assert isinstance(cpx, Cplex)
+    assert isinstance(mip_start, SparsePair)
+    vals = list(mip_start.val)
+    idx = np.array(list(mip_start.ind), dtype = int).tolist()
+    types = cpx.variables.get_types(idx)
+
+    for j, t in enumerate(types):
+        if t in ['B', 'I']:
+            vals[j] = int(vals[j])
+        elif t in ['C']:
+            vals[j] = float(vals[j])
+
+    return SparsePair(ind = idx, val = vals)
 
 
 def convert_to_risk_slim_cplex_solution(rho, indices, loss = None, objval = None):
@@ -413,6 +449,7 @@ def convert_to_risk_slim_cplex_solution(rho, indices, loss = None, objval = None
     -------
 
     """
+    global compute_loss
     n_variables = indices['n_variables']
     solution_idx = np.arange(n_variables)
     solution_val = np.zeros(n_variables)

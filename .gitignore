@@ -19,11 +19,15 @@ doc/
 ci_scripts/
 skltemplate/
 
-# riskslim specific
-riskslim_todo.ft
+# riskslim directories
 batch/data/
 batch/results/
 batch/log/
+scratch/
+cluster/
+
+# riskslim files
+riskslim_todo.ft
 examples/data/*cvindices.csv
 examples/data/*weights.csv
 examples/ex_00_tests.py
@@ -34,7 +38,7 @@ riskslim/tests/test_common.py
 riskslim/tests/test_template.py
 riskslim/loss_functions/build/
 riskslim/loss_functions/*.so
-scratch/
+riskslim/loss_functions/*.c
 
 # Distribution / packaging
 .Python

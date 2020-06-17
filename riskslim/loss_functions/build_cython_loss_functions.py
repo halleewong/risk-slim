@@ -8,18 +8,18 @@ To run this script
 
 $REPO_DIR/riskslim/loss_functions
 
-2. Run the following command in Bash:
+2. Run the following commands in Bash:
 
-python build_cython_loss_functions.py build_ext --inplace
+python2 build_cython_loss_functions.py build_ext --inplace
+python3 build_cython_loss_functions.py build_ext --inplace
 
 """
-
-from distutils.core import setup
-from distutils.extension import Extension
-
 import numpy
 import scipy
+from distutils.core import setup
+from distutils.extension import Extension
 from Cython.Distutils import build_ext
+
 
 #fast log loss
 ext_modules = [Extension(name = "fast_log_loss",

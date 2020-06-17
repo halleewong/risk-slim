@@ -1,8 +1,7 @@
 import numpy as np
-
 from .coefficient_set import CoefficientSet
 from .helper_functions import print_log
-
+from .debug import ipsh
 
 def setup_loss_functions(data, coef_set, L0_max = None, loss_computation = None, w_pos = 1.0):
     """
@@ -21,7 +20,6 @@ def setup_loss_functions(data, coef_set, L0_max = None, loss_computation = None,
     """
     #todo check if fast/lookup loss is installed
     assert loss_computation in [None, 'weighted', 'normal', 'fast', 'lookup']
-    MAX_DISTINCT_XY_VALUES_FOR_LOOKUP_ON_NONINTEGER_DATA = 20
 
     Z = data['X'] * data['Y']
 
@@ -32,9 +30,7 @@ def setup_loss_functions(data, coef_set, L0_max = None, loss_computation = None,
         use_weighted = False
 
     integer_data_flag = np.all(Z == np.require(Z, dtype = np.int_))
-    distinct_points_flag = np.unique(Z) <= MAX_DISTINCT_XY_VALUES_FOR_LOOKUP_ON_NONINTEGER_DATA
-    use_lookup_table = isinstance(coef_set, CoefficientSet) and (integer_data_flag or distinct_points_flag)
-
+    use_lookup_table = isinstance(coef_set, CoefficientSet) and integer_data_flag
     if use_weighted:
         final_loss_computation = 'weighted'
     elif use_lookup_table:
@@ -244,8 +240,9 @@ def get_conservative_offset(data, coef_set, max_L0_value = None):
         raise ValueError("coef_set must contain a variable for the offset called '(Intercept)'")
 
     # get idx of intercept/variables
-    variable_idx = range(len(coef_set))
+    variable_idx = list(range(len(coef_set)))
     variable_idx.remove(coef_set.variable_names.index('(Intercept)'))
+    variable_idx = np.array(variable_idx)
 
     # get max # of non-zero coefficients given model size limit
     L0_reg_ind = np.isnan(coef_set.C_0j)[variable_idx]

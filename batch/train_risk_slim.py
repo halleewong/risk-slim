@@ -33,7 +33,7 @@ from riskslim.setup_functions import get_conservative_offset
 from riskslim.lattice_cpa import run_lattice_cpa, DEFAULT_LCPA_SETTINGS
 
 # uncomment for debugging
-#from riskslim.debug import ipsh
+from riskslim.debug import ipsh
 
 # TODO: run the following when building
 # with open(settings_json, 'w') as outfile:
@@ -250,6 +250,12 @@ if __name__ == '__main__':
     pprint(model_info)
     print_model(model_info['solution'], data)
 
+    coef_set = results.pop('coef_set')
+    results['coef_set_ub'] = coef_set.ub
+    results['coef_set_lb'] = coef_set.lb
+    results['coef_set_signs'] = coef_set.sign
+    results['coef_set_c0'] = coef_set.c0
+
     logger.info("saving results...")
     with open(parsed.results, 'wb') as outfile:
         pickle.dump(results, outfile, protocol=pickle.HIGHEST_PROTOCOL)
@@ -258,8 +264,8 @@ if __name__ == '__main__':
     logger.info('''to access results, use this snippet:
 
                 \t\t\t    import pickle
-                \t\t\t    with open(results_file, 'rb') as infile:
-                \t\t\t    \tresults = pickle.load(infile)
+                \t\t\t    f = open(results_file, 'rb')
+                \t\t\t    results = pickle.load(f)
                 '''
                 )
     logger.info("finished training")
